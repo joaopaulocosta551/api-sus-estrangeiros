@@ -1,10 +1,10 @@
-package br.com.joaopaulo.apisusestrangeiros
+package com.joaopaulo.sus
 
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 
 @SpringBootTest
-class ApiSusEstrangeirosApplicationTests {
+class SusApiApplicationTests {
 
     @Test
     fun contextLoads() {

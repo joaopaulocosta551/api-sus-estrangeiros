@@ -1,11 +1,11 @@
-package br.com.joaopaulo.apisusestrangeiros
+package com.joaopaulo.sus
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
-class ApiSusEstrangeirosApplication
+class SusApiApplication
 
 fun main(args: Array<String>) {
-    runApplication<ApiSusEstrangeirosApplication>(*args)
+    runApplication<SusApiApplication>(*args)
 }

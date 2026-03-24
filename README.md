@@ -1,87 +1,55 @@
-# API SUS - Atendimentos a Estrangeiros 🏥🇧🇷
+# SUS Attendance API (Foreigners)
 
-Este é um projeto pessoal desenvolvido em **Kotlin** com **Spring Boot** para processar, armazenar e disponibilizar dados estatísticos sobre atendimentos do Sistema Único de Saúde (SUS) realizados em cidadãos estrangeiros. 
+REST API for managing and querying SUS (Unified Health System) attendance data for foreigners in Brazil.
 
-A fonte primária de dados para este projeto é o **DATASUS**, visando transformar dados brutos em uma API REST de fácil consumo.
+## Technologies
+- **Kotlin 2.1.0**
+- **Spring Boot 3.4.3**
+- **Java 22**
+- **Spring Data JPA (Hibernate)**
+- **PostgreSQL** (Production)
+- **H2 Database** (Development/Testing)
+- **Spring Security** (Basic Auth)
+- **SLF4J/Logback** (Logging)
+- **Gradle Kotlin DSL**
 
----
+## Project Refactoring
+The project has been refactored to follow international standards:
+- **Language**: All classes, methods, and variables renamed from Portuguese to English.
+- **Package Organization**: Improved structure with specific packages for controllers, services, repositories, entities, and configurations.
+- **Security**: Added Spring Security with Basic Authentication.
+- **Logging**: Integrated SLF4J for better traceability.
+- **Transactional**: Proper use of `@Transactional` for atomic database operations.
 
-## 🛠️ Tecnologias Utilizadas
+## Database Configuration
 
-O projeto utiliza o que há de mais moderno no ecossistema Java/Kotlin:
+### Production (PostgreSQL)
+For production environments, PostgreSQL is the recommended database. Update `src/main/resources/application.properties` with your credentials:
 
-- **Linguagem:** [Kotlin 2.1.0](https://kotlinlang.org/)
-- **Framework:** [Spring Boot 3.4.3](https://spring.io/projects/spring-boot)
-- **JDK:** [Java 22](https://openjdk.org/projects/jdk/22/)
-- **Persistência:** [Spring Data JPA](https://spring.io/projects/spring-data-jpa) (Hibernate)
-- **Bancos de Dados:** 
-  - **H2 (Memória):** Utilizado para desenvolvimento e testes rápidos.
-  - **PostgreSQL:** Suporte nativo para ambientes de produção.
-- **Testes:** JUnit 5, Mockito e MockMvc.
-- **Gerenciador de Dependências:** Gradle (Kotlin DSL).
-
----
-
-## 🏗️ Arquitetura do Projeto
-
-A aplicação segue o padrão de camadas (Layered Architecture):
-
-1.  **Entity (`AtendimentoSus`):** Mapeamento do banco de dados (Ano, Mês, País, Estado, Quantidade).
-2.  **Repository (`AtendimentoRepository`):** Interface JPA para operações de CRUD e consultas customizadas.
-3.  **Service (`AtendimentoService`):** Camada de lógica de negócio e intermediação.
-4.  **Controller (`AtendimentoController`):** Exposição dos endpoints REST.
-
----
-
-## 🚀 Como Executar o Projeto
-
-Certifique-se de ter o JDK 22 instalado em sua máquina.
-
-### Rodar a aplicação:
-```bash
-./gradlew bootRun
-```
-*A API estará disponível em: `http://localhost:8081`*
-
-### Rodar os testes:
-```bash
-./gradlew test
+```properties
+spring.datasource.url=jdbc:postgresql://your-host:5432/sus_db
+spring.datasource.username=your-user
+spring.datasource.password=your-password
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
 ```
 
----
+### Development (H2)
+By default, the project uses H2 in-memory database for rapid development. The H2 console is available at `/h2-console`.
 
-## 📡 Endpoints da API
+## Security
+The API is protected with Basic Authentication.
+- **Default Username**: `admin`
+- **Default Password**: `admin123`
 
-| Método | Endpoint | Descrição |
-| :--- | :--- | :--- |
-| `GET` | `/api/atendimentos` | Lista todos os registros. |
-| `GET` | `/api/atendimentos/{id}` | Busca um registro por ID único. |
-| `GET` | `/api/atendimentos/pais/{pais}` | Filtra atendimentos por país de origem. |
-| `GET` | `/api/atendimentos/estado/{uf}` | Filtra atendimentos por estado (ex: SP, RJ). |
-| `POST` | `/api/atendimentos` | Cadastra um novo registro de atendimento. |
-| `DELETE` | `/api/atendimentos/{id}` | Remove um registro do banco de dados. |
+## Endpoints
+- `GET /api/attendances`: List all attendances.
+- `GET /api/attendances/{id}`: Find attendance by ID.
+- `GET /api/attendances/country/{country}`: Filter by country.
+- `GET /api/attendances/state/{state}`: Filter by state.
+- `POST /api/attendances`: Create a new attendance record.
+- `DELETE /api/attendances/{id}`: Remove an attendance record.
 
----
-
-## 🔍 Ferramentas de Desenvolvimento
-
-### Console do Banco H2
-Durante o desenvolvimento, você pode visualizar os dados em tempo real através do console web:
-- **URL:** `http://localhost:8081/h2-console`
-- **JDBC URL:** `jdbc:h2:mem:susdb`
-- **Usuário:** `sa` (sem senha)
-
-### Logs de SQL
-As queries geradas pelo Hibernate são formatadas e exibidas no terminal para facilitar a depuração e otimização de consultas.
-
----
-
-## 📈 Próximos Passos (Roadmap)
-- [ ] Implementar serviço de importação de arquivos CSV do DATASUS.
-- [ ] Adicionar documentação interativa com **Swagger/OpenAPI**.
-- [ ] Criar filtros avançados por período (ano/mês).
-- [ ] Implementar segurança com Spring Security (Opcional).
-
----
-
-**Desenvolvido por João Paulo Silva Costa** 🚀
+## How to Run
+1. Clone the repository.
+2. Ensure you have Java 22 installed.
+3. Run `./gradlew bootRun`.
