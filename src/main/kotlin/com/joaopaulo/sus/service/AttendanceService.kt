@@ -4,6 +4,7 @@ import com.joaopaulo.sus.dto.AttendanceRequest
 import com.joaopaulo.sus.dto.AttendanceResponse
 import com.joaopaulo.sus.entity.SusAttendance
 import com.joaopaulo.sus.repository.AttendanceRepository
+import com.joaopaulo.sus.repository.specification.AttendanceSpecification
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -13,9 +14,17 @@ class AttendanceService(private val repository: AttendanceRepository) {
 
     private val logger = LoggerFactory.getLogger(AttendanceService::class.java)
 
-    fun findAll(): List<AttendanceResponse> {
-        logger.info("Fetching all attendances")
-        return repository.findAll().map { it.toResponse() }
+    fun findAll(
+        year: Int? = null,
+        month: Int? = null,
+        country: String? = null,
+        state: String? = null
+    ): List<AttendanceResponse> {
+        logger.info("Fetching attendances with filters - year: {}, month: {}, country: {}, state: {}", 
+            year, month, country, state)
+        
+        val spec = AttendanceSpecification.buildFilter(year, month, country, state)
+        return repository.findAll(spec).map { it.toResponse() }
     }
 
     @Transactional

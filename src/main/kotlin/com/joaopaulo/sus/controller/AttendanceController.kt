@@ -16,9 +16,15 @@ class AttendanceController(private val service: AttendanceService) {
     private val logger = LoggerFactory.getLogger(AttendanceController::class.java)
 
     @GetMapping
-    fun findAll(): List<AttendanceResponse> {
-        logger.info("Received request to list all attendances")
-        return service.findAll()
+    fun findAll(
+        @RequestParam(required = false) year: Int?,
+        @RequestParam(required = false) month: Int?,
+        @RequestParam(required = false) country: String?,
+        @RequestParam(required = false) state: String?
+    ): List<AttendanceResponse> {
+        logger.info("Received request to list attendances with filters: year={}, month={}, country={}, state={}", 
+            year, month, country, state)
+        return service.findAll(year, month, country, state)
     }
 
     @GetMapping("/{id}")
@@ -31,24 +37,6 @@ class AttendanceController(private val service: AttendanceService) {
             logger.warn("Attendance not found with id: {}", id)
             ResponseEntity.notFound().build()
         }
-    }
-
-    @GetMapping("/country/{country}")
-    fun findByCountry(@PathVariable country: String): List<AttendanceResponse> {
-        logger.info("Received request to find attendances by country: {}", country)
-        return service.findByCountry(country)
-    }
-
-    @GetMapping("/state/{state}")
-    fun findByState(@PathVariable state: String): List<AttendanceResponse> {
-        logger.info("Received request to find attendances by state: {}", state)
-        return service.findByState(state)
-    }
-
-    @GetMapping("/period/{year}/{month}")
-    fun findByPeriod(@PathVariable year: Int, @PathVariable month: Int): List<AttendanceResponse> {
-        logger.info("Received request to find attendances by period: {}/{}", month, year)
-        return service.findByPeriod(year, month)
     }
 
     @PostMapping
