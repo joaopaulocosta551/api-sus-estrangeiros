@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository
 interface AttendanceRepository : JpaRepository<SusAttendance, Long> {
     fun findByCountry(country: String): List<SusAttendance>
     fun findByState(state: String): List<SusAttendance>
+    fun findByYearAndMonth(year: Int, month: Int): List<SusAttendance>
+    fun existsByExternalId(externalId: String): Boolean
 }

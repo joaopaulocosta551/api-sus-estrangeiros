@@ -1,5 +1,7 @@
 package com.joaopaulo.sus.service
 
+import com.joaopaulo.sus.dto.AttendanceRequest
+import com.joaopaulo.sus.dto.AttendanceResponse
 import com.joaopaulo.sus.entity.SusAttendance
 import com.joaopaulo.sus.repository.AttendanceRepository
 import org.slf4j.LoggerFactory
@@ -11,30 +13,42 @@ class AttendanceService(private val repository: AttendanceRepository) {
 
     private val logger = LoggerFactory.getLogger(AttendanceService::class.java)
 
-    fun findAll(): List<SusAttendance> {
+    fun findAll(): List<AttendanceResponse> {
         logger.info("Fetching all attendances")
-        return repository.findAll()
+        return repository.findAll().map { it.toResponse() }
     }
 
     @Transactional
-    fun save(attendance: SusAttendance): SusAttendance {
-        logger.info("Saving new attendance for country: {}", attendance.country)
-        return repository.save(attendance)
+    fun save(request: AttendanceRequest): AttendanceResponse {
+        logger.info("Saving new attendance for country: {}", request.country)
+        val attendance = SusAttendance(
+            year = request.year,
+            month = request.month,
+            country = request.country,
+            state = request.state,
+            quantity = request.quantity
+        )
+        return repository.save(attendance).toResponse()
     }
 
-    fun findById(id: Long): SusAttendance? {
+    fun findById(id: Long): AttendanceResponse? {
         logger.info("Finding attendance by id: {}", id)
-        return repository.findById(id).orElse(null)
+        return repository.findById(id).map { it.toResponse() }.orElse(null)
     }
 
-    fun findByCountry(country: String): List<SusAttendance> {
+    fun findByCountry(country: String): List<AttendanceResponse> {
         logger.info("Finding attendances by country: {}", country)
-        return repository.findByCountry(country)
+        return repository.findByCountry(country).map { it.toResponse() }
     }
 
-    fun findByState(state: String): List<SusAttendance> {
+    fun findByState(state: String): List<AttendanceResponse> {
         logger.info("Finding attendances by state: {}", state)
-        return repository.findByState(state)
+        return repository.findByState(state).map { it.toResponse() }
+    }
+
+    fun findByPeriod(year: Int, month: Int): List<AttendanceResponse> {
+        logger.info("Finding attendances for period: {}/{}", month, year)
+        return repository.findByYearAndMonth(year, month).map { it.toResponse() }
     }
 
     @Transactional
@@ -47,4 +61,13 @@ class AttendanceService(private val repository: AttendanceRepository) {
             logger.warn("Attendance with id: {} not found for deletion", id)
         }
     }
+
+    private fun SusAttendance.toResponse() = AttendanceResponse(
+        id = this.id,
+        year = this.year,
+        month = this.month,
+        country = this.country,
+        state = this.state,
+        quantity = this.quantity
+    )
 }

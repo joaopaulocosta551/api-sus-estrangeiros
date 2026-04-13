@@ -1,7 +1,8 @@
 package com.joaopaulo.sus.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.joaopaulo.sus.entity.SusAttendance
+import com.joaopaulo.sus.dto.AttendanceRequest
+import com.joaopaulo.sus.dto.AttendanceResponse
 import com.joaopaulo.sus.service.AttendanceService
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any as mockitoAny
@@ -32,12 +33,12 @@ class AttendanceControllerTest {
 
     @Test
     fun `should list all attendances`() {
-        val attendances = listOf(
-            SusAttendance(id = 1L, year = 2024, month = 1, country = "Argentina", state = "SP", quantity = 100),
-            SusAttendance(id = 2L, year = 2024, month = 1, country = "Uruguay", state = "RS", quantity = 50)
+        val responses = listOf(
+            AttendanceResponse(id = 1L, year = 2024, month = 1, country = "Argentina", state = "SP", quantity = 100),
+            AttendanceResponse(id = 2L, year = 2024, month = 1, country = "Uruguay", state = "RS", quantity = 50)
         )
 
-        given(service.findAll()).willReturn(attendances)
+        given(service.findAll()).willReturn(responses)
 
         mockMvc.perform(get("/api/attendances"))
             .andExpect(status().isOk)
@@ -49,9 +50,9 @@ class AttendanceControllerTest {
 
     @Test
     fun `should find attendance by ID successfully`() {
-        val attendance = SusAttendance(id = 1L, year = 2024, month = 1, country = "Chile", state = "PR", quantity = 30)
+        val response = AttendanceResponse(id = 1L, year = 2024, month = 1, country = "Chile", state = "PR", quantity = 30)
 
-        given(service.findById(1L)).willReturn(attendance)
+        given(service.findById(1L)).willReturn(response)
 
         mockMvc.perform(get("/api/attendances/1"))
             .andExpect(status().isOk)
@@ -69,21 +70,40 @@ class AttendanceControllerTest {
 
     @Test
     fun `should create a new attendance`() {
-        val savedAttendance = SusAttendance(id = 1L, year = 2024, month = 2, country = "Bolivia", state = "MS", quantity = 20)
+        val savedResponse = AttendanceResponse(id = 1L, year = 2024, month = 2, country = "Bolivia", state = "MS", quantity = 20)
 
-        given(service.save(any())).willReturn(savedAttendance)
+        given(service.save(any())).willReturn(savedResponse)
 
-        val newAttendance = SusAttendance(year = 2024, month = 2, country = "Bolivia", state = "MS", quantity = 20)
+        val request = AttendanceRequest(year = 2024, month = 2, country = "Bolivia", state = "MS", quantity = 20)
 
         mockMvc.perform(
             post("/api/attendances")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(newAttendance))
+                .content(objectMapper.writeValueAsString(request))
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.country").value("Bolivia"))
+    }
+
+    @Test
+    fun `should return 400 when creating attendance with invalid data`() {
+        val invalidRequest = AttendanceRequest(year = 1999, month = 13, country = "", state = "XYZ", quantity = -1)
+
+        mockMvc.perform(
+            post("/api/attendances")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidRequest))
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Validation failed"))
+            .andExpect(jsonPath("$.errors.year").exists())
+            .andExpect(jsonPath("$.errors.month").exists())
+            .andExpect(jsonPath("$.errors.country").exists())
+            .andExpect(jsonPath("$.errors.state").exists())
+            .andExpect(jsonPath("$.errors.quantity").exists())
     }
 
     // Utility function to "trick" Kotlin's type system when using Mockito matchers

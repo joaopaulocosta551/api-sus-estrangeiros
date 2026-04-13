@@ -1,7 +1,9 @@
 package com.joaopaulo.sus.controller
 
-import com.joaopaulo.sus.entity.SusAttendance
+import com.joaopaulo.sus.dto.AttendanceRequest
+import com.joaopaulo.sus.dto.AttendanceResponse
 import com.joaopaulo.sus.service.AttendanceService
+import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -14,13 +16,13 @@ class AttendanceController(private val service: AttendanceService) {
     private val logger = LoggerFactory.getLogger(AttendanceController::class.java)
 
     @GetMapping
-    fun findAll(): List<SusAttendance> {
+    fun findAll(): List<AttendanceResponse> {
         logger.info("Received request to list all attendances")
         return service.findAll()
     }
 
     @GetMapping("/{id}")
-    fun findById(@PathVariable id: Long): ResponseEntity<SusAttendance> {
+    fun findById(@PathVariable id: Long): ResponseEntity<AttendanceResponse> {
         logger.info("Received request to find attendance by id: {}", id)
         val attendance = service.findById(id)
         return if (attendance != null) {
@@ -32,22 +34,28 @@ class AttendanceController(private val service: AttendanceService) {
     }
 
     @GetMapping("/country/{country}")
-    fun findByCountry(@PathVariable country: String): List<SusAttendance> {
+    fun findByCountry(@PathVariable country: String): List<AttendanceResponse> {
         logger.info("Received request to find attendances by country: {}", country)
         return service.findByCountry(country)
     }
 
     @GetMapping("/state/{state}")
-    fun findByState(@PathVariable state: String): List<SusAttendance> {
+    fun findByState(@PathVariable state: String): List<AttendanceResponse> {
         logger.info("Received request to find attendances by state: {}", state)
         return service.findByState(state)
     }
 
+    @GetMapping("/period/{year}/{month}")
+    fun findByPeriod(@PathVariable year: Int, @PathVariable month: Int): List<AttendanceResponse> {
+        logger.info("Received request to find attendances by period: {}/{}", month, year)
+        return service.findByPeriod(year, month)
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun save(@RequestBody attendance: SusAttendance): SusAttendance {
+    fun save(@Valid @RequestBody request: AttendanceRequest): AttendanceResponse {
         logger.info("Received request to save new attendance")
-        return service.save(attendance)
+        return service.save(request)
     }
 
     @DeleteMapping("/{id}")

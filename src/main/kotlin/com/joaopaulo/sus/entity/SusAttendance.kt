@@ -9,6 +9,9 @@ class SusAttendance(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
 
+    @Column(unique = true)
+    var externalId: String? = null,
+
     @Column(name = "attendance_year")
     var year: Int = 0,
     @Column(name = "attendance_month")
