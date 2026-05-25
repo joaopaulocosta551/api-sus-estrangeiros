@@ -2,6 +2,7 @@ package com.joaopaulo.sus.dto
 
 data class DashboardStats(
     val total: Long,
+    val globalTotal: Long,
     val stateStats: List<StateStat>,
     val countryStats: List<CountryStat>,
     val monthlyStats: List<MonthlyStat>,

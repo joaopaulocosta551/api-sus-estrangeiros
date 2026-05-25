@@ -78,6 +78,13 @@ class AttendanceService(
         params.forEach { (name, value) -> totalQuery.setParameter(name, value) }
         val total = totalQuery.singleResult
 
+        // Query global unfiltered total count
+        val globalTotalQuery = entityManager.createQuery(
+            "SELECT COALESCE(SUM(a.quantity), 0L) FROM SusAttendance a",
+            Long::class.javaObjectType
+        )
+        val globalTotal = globalTotalQuery.singleResult
+
         // 3. Query state statistics (grouped by state)
         val stateQuery = entityManager.createQuery(
             "SELECT new com.joaopaulo.sus.dto.StateStat(a.state, SUM(a.quantity)) FROM SusAttendance a $whereString GROUP BY a.state ORDER BY SUM(a.quantity) DESC",
@@ -120,7 +127,7 @@ class AttendanceService(
         )
         val availableStates = availableStatesQuery.resultList
 
-        return DashboardStats(total, stateStats, countryStats, monthlyStats, availableStates)
+        return DashboardStats(total, globalTotal, stateStats, countryStats, monthlyStats, availableStates)
     }
 
     @Transactional

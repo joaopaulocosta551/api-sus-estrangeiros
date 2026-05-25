@@ -11,6 +11,7 @@ export interface PaginatedResponse<T> {
 
 export interface DashboardStats {
     total: number;
+    globalTotal: number;
     stateStats: { state: string; count: number }[];
     countryStats: { country: string; count: number }[];
     monthlyStats: { label: string; rawDate: string; count: number }[];

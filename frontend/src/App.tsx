@@ -13,6 +13,36 @@ interface Attendance {
   quantity: number;
 }
 
+const BRAZILIAN_STATES = [
+  { uf: 'AC', name: 'Acre' },
+  { uf: 'AL', name: 'Alagoas' },
+  { uf: 'AP', name: 'Amapá' },
+  { uf: 'AM', name: 'Amazonas' },
+  { uf: 'BA', name: 'Bahia' },
+  { uf: 'CE', name: 'Ceará' },
+  { uf: 'DF', name: 'Distrito Federal' },
+  { uf: 'ES', name: 'Espírito Santo' },
+  { uf: 'GO', name: 'Goiás' },
+  { uf: 'MA', name: 'Maranhão' },
+  { uf: 'MT', name: 'Mato Grosso' },
+  { uf: 'MS', name: 'Mato Grosso do Sul' },
+  { uf: 'MG', name: 'Minas Gerais' },
+  { uf: 'PA', name: 'Pará' },
+  { uf: 'PB', name: 'Paraíba' },
+  { uf: 'PR', name: 'Paraná' },
+  { uf: 'PE', name: 'Pernambuco' },
+  { uf: 'PI', name: 'Piauí' },
+  { uf: 'RJ', name: 'Rio de Janeiro' },
+  { uf: 'RN', name: 'Rio Grande do Norte' },
+  { uf: 'RS', name: 'Rio Grande do Sul' },
+  { uf: 'RO', name: 'Rondônia' },
+  { uf: 'RR', name: 'Roraima' },
+  { uf: 'SC', name: 'Santa Catarina' },
+  { uf: 'SP', name: 'São Paulo' },
+  { uf: 'SE', name: 'Sergipe' },
+  { uf: 'TO', name: 'Tocantins' }
+];
+
 function App() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [tableData, setTableData] = useState<Attendance[]>([]);
@@ -92,6 +122,7 @@ function App() {
 
   // --- STATS CALCULATIONS ---
   const totalAttendances = stats?.total || 0;
+  const globalTotalAttendances = stats?.globalTotal || 0; // Absolute total of database, unfiltered!
   const stateStats = stats?.stateStats || [];
   const topState = stateStats[0]?.state || 'N/A';
   const countryStats = stats?.countryStats || [];
@@ -100,9 +131,6 @@ function App() {
   const averageMonthly = monthlyStats.length > 0 
     ? Math.round(totalAttendances / monthlyStats.length) 
     : 0;
-
-  // List of unique states available for filtering (retrieved from stats backend)
-  const availableStates = stats?.availableStates || [];
 
   // --- SVG CHART PARAMETERS ---
   const svgHeight = 220;
@@ -123,33 +151,31 @@ function App() {
         </div>
         <div className="header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Filtro de Estado */}
-          {availableStates.length > 0 && (
-            <select
-              value={selectedStateFilter}
-              onChange={(e) => {
-                setSelectedStateFilter(e.target.value);
-                setCurrentPage(0); // Reset table page to 0 when filter changes
-              }}
-              style={{
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
-                borderRadius: '12px',
-                color: '#60a5fa',
-                padding: '0.75rem 1rem',
-                fontWeight: 700,
-                fontSize: '0.9rem',
-                outline: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                fontFamily: 'inherit'
-              }}
-            >
-              <option value="all">📍 Todos os Estados</option>
-              {availableStates.map(st => (
-                <option key={st} value={st}>📍 Estado: {st}</option>
-              ))}
-            </select>
-          )}
+          <select
+            value={selectedStateFilter}
+            onChange={(e) => {
+              setSelectedStateFilter(e.target.value);
+              setCurrentPage(0); // Reset table page to 0 when filter changes
+            }}
+            style={{
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.25)',
+              borderRadius: '12px',
+              color: '#60a5fa',
+              padding: '0.75rem 1rem',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              outline: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              fontFamily: 'inherit'
+            }}
+          >
+            <option value="all">📍 Todos os Estados</option>
+            {BRAZILIAN_STATES.map(st => (
+              <option key={st.uf} value={st.uf}>📍 {st.uf} - {st.name}</option>
+            ))}
+          </select>
 
           <select
             value={importCount}
@@ -179,15 +205,14 @@ function App() {
             className="btn" 
             onClick={() => handleImport(importCount)} 
             disabled={importing}
+            title="Buscar e sincronizar registros da API pública OpenDataSUS"
           >
             {importing ? <div className="spinner"></div> : (
               <>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                 </svg>
-                Importar
+                Sincronizar SUS
               </>
             )}
           </button>
@@ -253,8 +278,9 @@ function App() {
                   <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
               </div>
-              <div className="metric-value">{totalAttendances.toLocaleString()}</div>
-              <div className="metric-desc">Estrangeiros notificados no SUS</div>
+              {/* Unfiltered global total, showing all loaded rows in the database */}
+              <div className="metric-value">{globalTotalAttendances.toLocaleString()}</div>
+              <div className="metric-desc">Total acumulado na base de dados</div>
             </div>
 
             <div className="metric-card">
@@ -303,8 +329,8 @@ function App() {
                 <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
                 <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
               </svg>
-              <h3 style={{ color: 'white', marginBottom: '0.5rem' }}>Nenhum dado importado</h3>
-              <p style={{ color: 'var(--text-muted)', maxWidth: '400px' }}>Clique em "Importar" no topo para carregar e modelar dados reais do SUS!</p>
+              <h3 style={{ color: 'white', marginBottom: '0.5rem' }}>Nenhum dado encontrado para o filtro</h3>
+              <p style={{ color: 'var(--text-muted)', maxWidth: '400px' }}>Clique em "Sincronizar SUS" no topo ou mude o filtro para carregar registros!</p>
             </div>
           ) : (
             <>
@@ -426,30 +452,31 @@ function App() {
                 </div>
               </div>
 
-              {/* Monthly Trend Area Chart (Full Width) */}
-              <div className="chart-card" style={{ minHeight: '300px' }}>
-                <div className="chart-title">
+              {/* Monthly Trend Area Chart (Optimized Vertical Space & Dynamically Spaced Month Labels) */}
+              <div className="chart-card" style={{ minHeight: '380px', display: 'flex', flexDirection: 'column' }}>
+                <div className="chart-title" style={{ marginBottom: '1.5rem' }}>
                   Tendência de Atendimentos Mensais
                   <span className="badge" style={{ background: 'rgba(217, 70, 239, 0.15)', color: '#f472b6', borderColor: 'rgba(217, 70, 239, 0.25)' }}>Histórico</span>
                 </div>
-                <div className="chart-container" style={{ minHeight: '180px' }}>
+                
+                <div className="chart-container" style={{ flexGrow: 1, minHeight: '260px' }}>
                   {monthlyStats.length > 0 && (
-                    <svg viewBox="0 0 1000 200" width="100%" height="100%">
+                    <svg viewBox="0 0 1000 280" width="100%" height="100%">
                       <defs>
                         <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />
+                          <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.45" />
                           <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
                         </linearGradient>
                       </defs>
                       
-                      {/* Grid lines */}
-                      {[0, 0.5, 1].map((ratio, idx) => {
-                        const yVal = 15 + 140 * (1 - ratio);
+                      {/* Grid lines (5 ratios instead of 3 for premium density) */}
+                      {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                        const yVal = 20 + 200 * (1 - ratio);
                         const maxVal = Math.max(...monthlyStats.map(m => m.count), 1);
                         return (
                           <g key={idx}>
                             <line x1="45" y1={yVal} x2="985" y2={yVal} className="svg-grid-line" />
-                            <text x="35" y={yVal + 4} fill="var(--text-muted)" fontSize="9" textAnchor="end" fontWeight="600">
+                            <text x="35" y={yVal + 4} fill="var(--text-muted)" fontSize="9" textAnchor="end" fontWeight="700">
                               {Math.round(maxVal * ratio).toLocaleString()}
                             </text>
                           </g>
@@ -459,10 +486,10 @@ function App() {
                       {(() => {
                         const maxVal = Math.max(...monthlyStats.map(m => m.count), 1);
                         const w = 940;
-                        const h = 140;
+                        const h = 200; // Increased SVG line height span
                         const pts = monthlyStats.map((m, idx) => {
                           const x = 45 + idx * (w / (monthlyStats.length - 1 || 1));
-                          const y = 15 + (h - (m.count / maxVal) * h);
+                          const y = 20 + (h - (m.count / maxVal) * h);
                           return { x, y };
                         });
 
@@ -473,8 +500,12 @@ function App() {
 
                         // Construct SVG path string for the gradient fill area
                         const areaPath = pts.length > 0 
-                          ? `${linePath} L ${pts[pts.length - 1].x} 155 L ${pts[0].x} 155 Z`
+                          ? `${linePath} L ${pts[pts.length - 1].x} 220 L ${pts[0].x} 220 Z`
                           : '';
+
+                        // Decide spacing frequency based on month density
+                        // Show at most 10-12 labels to completely avoid overlapping on crowded timelines
+                        const labelSkipFrequency = Math.max(1, Math.ceil(monthlyStats.length / 10));
 
                         return (
                           <g>
@@ -487,7 +518,7 @@ function App() {
                                 d={linePath}
                                 fill="none"
                                 stroke="#8b5cf6"
-                                strokeWidth="3"
+                                strokeWidth="3.5"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 className="chart-line"
@@ -495,40 +526,56 @@ function App() {
                             )}
 
                             {/* Data points */}
-                            {pts.map((p, idx) => (
-                              <g key={idx}>
-                                <circle
-                                  cx={p.x}
-                                  cy={p.y}
-                                  r="5"
-                                  fill="#8b5cf6"
-                                  stroke="#ffffff"
-                                  strokeWidth="2.5"
-                                  className="chart-dot"
-                                />
-                                <text
-                                  cx={p.x}
-                                  x={p.x}
-                                  y={p.y - 10}
-                                  fill="white"
-                                  fontSize="9"
-                                  fontWeight="700"
-                                  textAnchor="middle"
-                                >
-                                  {monthlyStats[idx].count.toLocaleString()}
-                                </text>
-                                <text
-                                  x={p.x}
-                                  y="180"
-                                  fill="var(--text-muted)"
-                                  fontSize="10"
-                                  fontWeight="600"
-                                  textAnchor="middle"
-                                >
-                                  {monthlyStats[idx].label}
-                                </text>
-                              </g>
-                            ))}
+                            {pts.map((p, idx) => {
+                              // Only show numeric values directly above dots if dataset is small (<= 15 points)
+                              const showNumericDotLabel = monthlyStats.length <= 15;
+                              
+                              // Dynamically display month labels to prevent squeezing
+                              const showMonthLabel = idx % labelSkipFrequency === 0 || idx === monthlyStats.length - 1;
+
+                              return (
+                                <g key={idx}>
+                                  <circle
+                                    cx={p.x}
+                                    cy={p.y}
+                                    r="6"
+                                    fill="#8b5cf6"
+                                    stroke="#ffffff"
+                                    strokeWidth="3"
+                                    className="chart-dot"
+                                  />
+                                  
+                                  {showNumericDotLabel && (
+                                    <text
+                                      x={p.x}
+                                      y={p.y - 12}
+                                      fill="white"
+                                      fontSize="9"
+                                      fontWeight="800"
+                                      textAnchor="middle"
+                                    >
+                                      {monthlyStats[idx].count.toLocaleString()}
+                                    </text>
+                                  )}
+
+                                  {showMonthLabel && (
+                                    <g>
+                                      <line x1={p.x} y1="220" x2={p.x} y2="225" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
+                                      <text
+                                        x={p.x}
+                                        y="245"
+                                        fill="var(--text-muted)"
+                                        fontSize="10"
+                                        fontWeight="700"
+                                        textAnchor="middle"
+                                      >
+                                        {monthlyStats[idx].label}
+                                      </text>
+                                    </g>
+                                  )}
+                                </g>
+                              );
+                            })}
                           </g>
                         );
                       })()}
@@ -569,7 +616,7 @@ function App() {
                         </svg>
                         Nenhum registro encontrado.  
                         <span style={{ display: 'block', fontSize: '0.85rem', marginTop: '0.25rem', color: 'var(--text-muted)' }}>
-                          Clique em "Importar" no topo para puxar novos dados.
+                          Clique em "Sincronizar SUS" no topo para puxar novos dados.
                         </span>
                       </td>
                     </tr>
