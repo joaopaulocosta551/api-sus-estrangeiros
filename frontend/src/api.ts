@@ -61,3 +61,13 @@ export const importAttendances = async (maxRecords: number = 100): Promise<strin
     if (!response.ok) throw new Error('Failed to import data');
     return response.text();
 };
+
+export const fetchImportStatus = async (): Promise<{ isImporting: boolean }> => {
+    const response = await fetch(`${API_URL}/attendances/import/status`, {
+        headers: {
+            'Authorization': authHeader
+        }
+    });
+    if (!response.ok) throw new Error('Failed to fetch import status');
+    return response.json();
+};
