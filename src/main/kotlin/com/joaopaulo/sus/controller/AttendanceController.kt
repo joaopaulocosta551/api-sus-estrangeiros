@@ -1,10 +1,12 @@
 package com.joaopaulo.sus.controller
 
-import com.joaopaulo.sus.dto.AttendanceRequest
-import com.joaopaulo.sus.dto.AttendanceResponse
+import com.joaopaulo.sus.dto.*
 import com.joaopaulo.sus.service.AttendanceService
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -20,11 +22,29 @@ class AttendanceController(private val service: AttendanceService) {
         @RequestParam(required = false) year: Int?,
         @RequestParam(required = false) month: Int?,
         @RequestParam(required = false) country: String?,
+        @RequestParam(required = false) state: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int
+    ): Page<AttendanceResponse> {
+        logger.info("Received request to list paginated attendances - year={}, month={}, country={}, state={}, page={}, size={}", 
+            year, month, country, state, page, size)
+        
+        val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"))
+        return service.findAll(year, month, country, state, pageable)
+    }
+
+    @GetMapping("/stats")
+    fun getStats(
+        @RequestParam(required = false) year: Int?,
+        @RequestParam(required = false) month: Int?,
+        @RequestParam(required = false) country: String?,
         @RequestParam(required = false) state: String?
-    ): List<AttendanceResponse> {
-        logger.info("Received request to list attendances with filters: year={}, month={}, country={}, state={}", 
+    ): ResponseEntity<DashboardStats> {
+        logger.info("Received request to get dashboard stats - year={}, month={}, country={}, state={}", 
             year, month, country, state)
-        return service.findAll(year, month, country, state)
+        
+        val stats = service.getDashboardStats(year, month, country, state)
+        return ResponseEntity.ok(stats)
     }
 
     @GetMapping("/{id}")

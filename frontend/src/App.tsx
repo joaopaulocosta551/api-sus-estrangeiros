@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchAttendances, importAttendances } from './api';
+import { fetchAttendances, fetchDashboardStats, importAttendances } from './api';
+import type { DashboardStats } from './api';
 import './index.css';
 
 interface Attendance {
@@ -13,36 +14,75 @@ interface Attendance {
 }
 
 function App() {
-  const [data, setData] = useState<Attendance[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [tableData, setTableData] = useState<Attendance[]>([]);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageSize] = useState(20);
+
   const [loading, setLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'table'>('dashboard');
   const [importCount, setImportCount] = useState<number>(500); // Default to 500 for a richer dataset!
   const [selectedStateFilter, setSelectedStateFilter] = useState<string>('all');
 
-  const loadData = async () => {
+  const loadStats = async (stateFilter: string) => {
     setLoading(true);
     try {
-      const result = await fetchAttendances();
-      setData(result);
+      const result = await fetchDashboardStats(stateFilter);
+      setStats(result);
       setError('');
     } catch (err) {
-      setError('Falha ao conectar com a API. O servidor do Spring Boot está rodando na porta 8081?');
+      setError('Falha ao carregar estatísticas do painel. O servidor do Spring Boot está rodando na porta 8081?');
     } finally {
       setLoading(false);
     }
   };
 
+  const loadTableData = async (page: number, stateFilter: string) => {
+    setTableLoading(true);
+    try {
+      const result = await fetchAttendances(page, pageSize, stateFilter);
+      setTableData(result.content);
+      setTotalPages(result.totalPages);
+      setTotalElements(result.totalElements);
+      setCurrentPage(result.number);
+      setError('');
+    } catch (err) {
+      setError('Falha ao conectar com a API para obter registros paginados.');
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
+  // Load stats when state filter changes
   useEffect(() => {
-    loadData();
-  }, []);
+    loadStats(selectedStateFilter);
+  }, [selectedStateFilter]);
+
+  // Load table data when active tab changes to table, or page changes, or state filter changes
+  useEffect(() => {
+    if (activeTab === 'table') {
+      loadTableData(currentPage, selectedStateFilter);
+    }
+  }, [activeTab, currentPage, selectedStateFilter]);
 
   const handleImport = async (count: number) => {
     setImporting(true);
     try {
       await importAttendances(count);
-      await loadData(); // Reload after importing
+      // Reload active data
+      await loadStats(selectedStateFilter);
+      if (activeTab === 'table') {
+        await loadTableData(0, selectedStateFilter);
+      } else {
+        setCurrentPage(0);
+      }
     } catch (err) {
       setError('Falha na importação. Verifique os logs do backend.');
     } finally {
@@ -50,64 +90,19 @@ function App() {
     }
   };
 
-  // Filter data based on selected state
-  const filteredData = selectedStateFilter === 'all' 
-    ? data 
-    : data.filter(item => item.state === selectedStateFilter);
-
   // --- STATS CALCULATIONS ---
-  const totalAttendances = filteredData.reduce((acc, curr) => acc + curr.quantity, 0);
-
-  // Group by State (Always use full data for state distribution chart, but other metrics reflect filtered data)
-  const stateStats = Object.entries(
-    data.reduce((acc, curr) => {
-      acc[curr.state] = (acc[curr.state] || 0) + curr.quantity;
-      return acc;
-    }, {} as Record<string, number>)
-  )
-    .map(([state, count]) => ({ state, count }))
-    .sort((a, b) => b.count - a.count);
-
+  const totalAttendances = stats?.total || 0;
+  const stateStats = stats?.stateStats || [];
   const topState = stateStats[0]?.state || 'N/A';
-
-  // Group by Country
-  const countryStats = Object.entries(
-    filteredData.reduce((acc, curr) => {
-      acc[curr.country] = (acc[curr.country] || 0) + curr.quantity;
-      return acc;
-    }, {} as Record<string, number>)
-  )
-    .map(([country, count]) => ({ country, count }))
-    .sort((a, b) => b.count - a.count);
-
+  const countryStats = stats?.countryStats || [];
   const topCountry = countryStats[0]?.country || 'N/A';
-
-  // Group by Month (Trend)
-  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  const monthlyStats = Object.entries(
-    filteredData.reduce((acc, curr) => {
-      const key = `${curr.year}-${String(curr.month).padStart(2, '0')}`;
-      acc[key] = (acc[key] || 0) + curr.quantity;
-      return acc;
-    }, {} as Record<string, number>)
-  )
-    .map(([key, count]) => {
-      const [year, monthStr] = key.split('-');
-      const monthIdx = parseInt(monthStr, 10) - 1;
-      return {
-        label: `${monthNames[monthIdx]}/${year.substring(2)}`,
-        rawDate: key,
-        count,
-      };
-    })
-    .sort((a, b) => a.rawDate.localeCompare(b.rawDate));
-
+  const monthlyStats = stats?.monthlyStats || [];
   const averageMonthly = monthlyStats.length > 0 
     ? Math.round(totalAttendances / monthlyStats.length) 
     : 0;
 
-  // List of unique states available for filtering
-  const availableStates = Array.from(new Set(data.map(item => item.state))).sort();
+  // List of unique states available for filtering (retrieved from stats backend)
+  const availableStates = stats?.availableStates || [];
 
   // --- SVG CHART PARAMETERS ---
   const svgHeight = 220;
@@ -128,10 +123,13 @@ function App() {
         </div>
         <div className="header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Filtro de Estado */}
-          {data.length > 0 && (
+          {availableStates.length > 0 && (
             <select
               value={selectedStateFilter}
-              onChange={(e) => setSelectedStateFilter(e.target.value)}
+              onChange={(e) => {
+                setSelectedStateFilter(e.target.value);
+                setCurrentPage(0); // Reset table page to 0 when filter changes
+              }}
               style={{
                 background: 'rgba(59, 130, 246, 0.1)',
                 border: '1px solid rgba(59, 130, 246, 0.25)',
@@ -255,7 +253,7 @@ function App() {
                   <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
               </div>
-              <div className="metric-value">{totalAttendances}</div>
+              <div className="metric-value">{totalAttendances.toLocaleString()}</div>
               <div className="metric-desc">Estrangeiros notificados no SUS</div>
             </div>
 
@@ -294,7 +292,7 @@ function App() {
                   <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
               </div>
-              <div className="metric-value">{averageMonthly}</div>
+              <div className="metric-value">{averageMonthly.toLocaleString()}</div>
               <div className="metric-desc">Atendimentos por mês ativo</div>
             </div>
           </div>
@@ -306,7 +304,7 @@ function App() {
                 <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
               </svg>
               <h3 style={{ color: 'white', marginBottom: '0.5rem' }}>Nenhum dado importado</h3>
-              <p style={{ color: 'var(--text-muted)', maxWidth: '400px' }}>Clique em "Importar Dados OpenDataSUS" no topo para carregar e modelar dados reais do SUS!</p>
+              <p style={{ color: 'var(--text-muted)', maxWidth: '400px' }}>Clique em "Importar" no topo para carregar e modelar dados reais do SUS!</p>
             </div>
           ) : (
             <>
@@ -332,12 +330,12 @@ function App() {
                           const yVal = paddingTop + chartHeight * (1 - ratio);
                           const maxVal = Math.max(...stateStats.map(s => s.count), 1);
                           return (
-                            <g key={idx}>
-                              <line x1={paddingLeft} y1={yVal} x2={svgWidth - paddingRight} y2={yVal} className="svg-grid-line" />
-                              <text x={paddingLeft - 8} y={yVal + 4} fill="var(--text-muted)" fontSize="9" textAnchor="end" fontWeight="600">
-                                {Math.round(maxVal * ratio)}
-                              </text>
-                            </g>
+                             <g key={idx}>
+                               <line x1={paddingLeft} y1={yVal} x2={svgWidth - paddingRight} y2={yVal} className="svg-grid-line" />
+                               <text x={paddingLeft - 8} y={yVal + 4} fill="var(--text-muted)" fontSize="9" textAnchor="end" fontWeight="600">
+                                 {Math.round(maxVal * ratio).toLocaleString()}
+                               </text>
+                             </g>
                           );
                         })}
                         {/* Bars and labels */}
@@ -378,7 +376,7 @@ function App() {
                                 fontWeight="700"
                                 textAnchor="middle"
                               >
-                                {s.count}
+                                {s.count.toLocaleString()}
                               </text>
                             </g>
                           );
@@ -409,7 +407,7 @@ function App() {
                           <div className="progress-item" key={idx}>
                             <div className="progress-label-row">
                               <span className="progress-label-name">{c.country}</span>
-                              <span className="progress-label-val">{c.count} ({Math.round(percent)}%)</span>
+                              <span className="progress-label-val">{c.count.toLocaleString()} ({Math.round(percent)}%)</span>
                             </div>
                             <div className="progress-bar-bg">
                               <div 
@@ -452,7 +450,7 @@ function App() {
                           <g key={idx}>
                             <line x1="45" y1={yVal} x2="985" y2={yVal} className="svg-grid-line" />
                             <text x="35" y={yVal + 4} fill="var(--text-muted)" fontSize="9" textAnchor="end" fontWeight="600">
-                              {Math.round(maxVal * ratio)}
+                              {Math.round(maxVal * ratio).toLocaleString()}
                             </text>
                           </g>
                         );
@@ -509,6 +507,7 @@ function App() {
                                   className="chart-dot"
                                 />
                                 <text
+                                  cx={p.x}
                                   x={p.x}
                                   y={p.y - 10}
                                   fill="white"
@@ -516,7 +515,7 @@ function App() {
                                   fontWeight="700"
                                   textAnchor="middle"
                                 >
-                                  {monthlyStats[idx].count}
+                                  {monthlyStats[idx].count.toLocaleString()}
                                 </text>
                                 <text
                                   x={p.x}
@@ -542,55 +541,153 @@ function App() {
         </div>
       ) : (
         <div className="table-container animate-fade-in">
-          <table>
-            <thead>
-              <tr>
-                <th>ID Externo</th>
-                <th>País de Origem</th>
-                <th>Estado (UF)</th>
-                <th>Período de Atendimento</th>
-                <th>Qtd</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 1rem' }}>
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', margin: '0 auto 1rem', opacity: 0.5 }}>
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="9" y1="9" x2="15" y2="9"></line>
-                      <line x1="9" y1="13" x2="15" y2="13"></line>
-                      <line x1="9" y1="17" x2="15" y2="17"></line>
-                    </svg>
-                    Nenhum registro encontrado.  
-                    <span style={{ display: 'block', fontSize: '0.85rem', marginTop: '0.25rem', color: 'var(--text-muted)' }}>
-                      Clique em "Importar Dados OpenDataSUS" no topo para puxar novos dados.
-                    </span>
-                  </td>
-                </tr>
-              ) : (
-                data.map(item => (
-                  <tr key={item.id}>
-                    <td style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                      {item.externalId ? item.externalId.substring(0, 10) + '...' : 'N/A'}
-                    </td>
-                    <td>
-                      <span className="badge badge-country">{item.country}</span>
-                    </td>
-                    <td>
-                      <span className="badge">{item.state}</span>
-                    </td>
-                    <td style={{ fontWeight: 600 }}>
-                      {String(item.month).padStart(2, '0')}/{item.year}
-                    </td>
-                    <td style={{ color: 'white', fontWeight: 700 }}>
-                      {item.quantity}
-                    </td>
+          {tableLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '5rem 0' }}>
+              <div className="spinner" style={{ width: '45px', height: '45px', borderWidth: '4px', borderTopColor: 'var(--primary)' }}></div>
+            </div>
+          ) : (
+            <>
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID Externo</th>
+                    <th>País de Origem</th>
+                    <th>Estado (UF)</th>
+                    <th>Período de Atendimento</th>
+                    <th>Qtd</th>
                   </tr>
-                ))
+                </thead>
+                <tbody>
+                  {tableData.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 1rem' }}>
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', margin: '0 auto 1rem', opacity: 0.5 }}>
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="9" y1="9" x2="15" y2="9"></line>
+                          <line x1="9" y1="13" x2="15" y2="13"></line>
+                          <line x1="9" y1="17" x2="15" y2="17"></line>
+                        </svg>
+                        Nenhum registro encontrado.  
+                        <span style={{ display: 'block', fontSize: '0.85rem', marginTop: '0.25rem', color: 'var(--text-muted)' }}>
+                          Clique em "Importar" no topo para puxar novos dados.
+                        </span>
+                      </td>
+                    </tr>
+                  ) : (
+                    tableData.map(item => (
+                      <tr key={item.id}>
+                        <td style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                          {item.externalId ? item.externalId.substring(0, 10) + '...' : 'N/A'}
+                        </td>
+                        <td>
+                          <span className="badge badge-country">{item.country}</span>
+                        </td>
+                        <td>
+                          <span className="badge">{item.state}</span>
+                        </td>
+                        <td style={{ fontWeight: 600 }}>
+                          {String(item.month).padStart(2, '0')}/{item.year}
+                        </td>
+                        <td style={{ color: 'white', fontWeight: 700 }}>
+                          {item.quantity}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              {/* PAGINATION CONTROLLER */}
+              {totalPages > 1 && (
+                <div className="pagination-footer" style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '1.25rem 1.5rem',
+                  borderTop: '1px solid var(--glass-border)',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
+                  marginTop: '0.5rem'
+                }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
+                    Exibindo <span style={{ color: 'var(--text-main)' }}>{(currentPage * pageSize) + 1}</span> - <span style={{ color: 'var(--text-main)' }}>{Math.min((currentPage + 1) * pageSize, totalElements)}</span> de <span style={{ color: 'var(--primary)' }}>{totalElements.toLocaleString()}</span> registros
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                      disabled={currentPage === 0}
+                      style={{
+                        background: currentPage === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--glass-border)',
+                        color: currentPage === 0 ? 'rgba(255, 255, 255, 0.2)' : 'white',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '8px',
+                        cursor: currentPage === 0 ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      Anterior
+                    </button>
+
+                    {/* Page Numbers */}
+                    {(() => {
+                      const pages = [];
+                      const startPage = Math.max(0, currentPage - 2);
+                      const endPage = Math.min(totalPages - 1, startPage + 4);
+                      
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(i)}
+                            style={{
+                              background: currentPage === i ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
+                              border: currentPage === i ? 'none' : '1px solid var(--glass-border)',
+                              color: 'white',
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontWeight: 700,
+                              fontSize: '0.85rem',
+                              transition: 'all 0.2s ease',
+                              boxShadow: currentPage === i ? '0 0 12px rgba(59, 130, 246, 0.5)' : 'none'
+                            }}
+                          >
+                            {i + 1}
+                          </button>
+                        );
+                      }
+                      return pages;
+                    })()}
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                      disabled={currentPage === totalPages - 1}
+                      style={{
+                        background: currentPage === totalPages - 1 ? 'transparent' : 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--glass-border)',
+                        color: currentPage === totalPages - 1 ? 'rgba(255, 255, 255, 0.2)' : 'white',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '8px',
+                        cursor: currentPage === totalPages - 1 ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      Próximo
+                    </button>
+                  </div>
+                </div>
               )}
-            </tbody>
-          </table>
+            </>
+          )}
         </div>
       )}
     </div>
