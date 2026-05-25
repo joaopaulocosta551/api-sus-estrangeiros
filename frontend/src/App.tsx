@@ -543,7 +543,7 @@ function App() {
                     Países de Origem
                     <span className="badge badge-country">Demografia</span>
                   </div>
-                  <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%' }}>
                     <div className="progress-list">
                       {countryStats.slice(0, 5).map((c, idx) => {
                         const percent = totalAttendances > 0 ? (c.count / totalAttendances) * 100 : 0;
@@ -572,6 +572,22 @@ function App() {
                           </div>
                         );
                       })}
+                    </div>
+
+                    <div style={{
+                      marginTop: '1.25rem',
+                      paddingTop: '0.75rem',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-muted)',
+                      lineHeight: '1.4',
+                      display: 'flex',
+                      gap: '0.4rem',
+                      alignItems: 'flex-start',
+                      width: '100%'
+                    }}>
+                      <span style={{ color: 'var(--primary)', fontWeight: 800 }}>ℹ️ Nota de LGPD:</span>
+                      <span>O DataSUS não disponibiliza o país de origem específico nos dados públicos por privacidade. As nacionalidades exibidas acima são distribuídas estatisticamente no backend com base nas demografias oficiais de imigração no Brasil.</span>
                     </div>
                   </div>
                 </div>
@@ -712,7 +728,8 @@ function App() {
           )}
         </div>
       ) : (
-        <div className="table-container animate-fade-in">
+        <>
+          <div className="table-container animate-fade-in">
           {tableLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '5rem 0' }}>
               <div className="spinner" style={{ width: '45px', height: '45px', borderWidth: '4px', borderTopColor: 'var(--primary)' }}></div>
@@ -861,6 +878,21 @@ function App() {
             </>
           )}
         </div>
+        <div style={{
+          marginTop: '1rem',
+          fontSize: '0.75rem',
+          color: 'var(--text-muted)',
+          lineHeight: '1.5',
+          padding: '0 0.5rem',
+          textAlign: 'left',
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'flex-start'
+        }}>
+          <span style={{ color: 'var(--primary)', fontWeight: 800 }}>ℹ️ Observação sobre privacidade:</span>
+          <span>Os IDs Externos são hashes anonimizados fornecidos pelo e-SUS Notifica. Por conformidade com a LGPD, o DataSUS não disponibiliza o país de origem específico nos dados públicos. As nacionalidades exibidas são distribuídas estatisticamente no backend com base no perfil migratório oficial do Brasil para fins de simulação e análise visual.</span>
+        </div>
+        </>
       )}
     </div>
   );
