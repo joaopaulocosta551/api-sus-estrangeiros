@@ -44,7 +44,7 @@ class OpenDataSusClient {
                 OpenSearchRequest(
                     from = from,
                     size = size,
-                    query = OpenSearchQuery(QueryString("estrangeiro"))
+                    query = OpenSearchQuery(QueryString("estrangeiro: \"Sim\""))
                 )
             )
         }
