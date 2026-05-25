@@ -30,6 +30,10 @@ class AttendanceImportService(
             logger.info("Starting data import from OpenDataSUS in the background...")
 
             while (totalImported < maxRecords) {
+                if (currentFrom + BATCH_SIZE > 10000) {
+                    logger.info("Reached the maximum result window limit (10,000) of OpenDataSUS. Stopping import gracefully.")
+                    break
+                }
                 val shouldBreak = runBlocking {
                     try {
                         val response = openDataSusClient.fetchEstrangeiros(currentFrom, BATCH_SIZE)
