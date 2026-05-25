@@ -56,9 +56,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'table'>('dashboard');
-  const [importCount, setImportCount] = useState<number>(500); // Default to 500 for a richer dataset!
+  const [importCount, setImportCount] = useState<number | 'all_records'>(500); // Default to 500 for a richer dataset!
   const [selectedStateFilter, setSelectedStateFilter] = useState<string>('all');
 
   const loadStats = async (stateFilter: string) => {
@@ -117,6 +118,14 @@ function App() {
       setError('Falha na importação. Verifique os logs do backend.');
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleSyncClick = () => {
+    if (importCount === 'all_records') {
+      setShowWarningModal(true);
+    } else {
+      handleImport(importCount);
     }
   };
 
@@ -179,7 +188,10 @@ function App() {
 
           <select
             value={importCount}
-            onChange={(e) => setImportCount(Number(e.target.value))}
+            onChange={(e) => {
+              const val = e.target.value;
+              setImportCount(val === 'all_records' ? 'all_records' : Number(val));
+            }}
             disabled={importing}
             style={{
               background: 'rgba(0, 0, 0, 0.4)',
@@ -200,10 +212,11 @@ function App() {
             <option value="1000">1.000 registros</option>
             <option value="2000">2.000 registros</option>
             <option value="5000">5.000 registros</option>
+            <option value="all_records">Todos os registros (Base Completa)</option>
           </select>
           <button 
             className="btn" 
-            onClick={() => handleImport(importCount)} 
+            onClick={handleSyncClick} 
             disabled={importing}
             title="Buscar e sincronizar registros da API pública OpenDataSUS"
           >
@@ -735,6 +748,146 @@ function App() {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* CONFIRMATION WARNING MODAL (FOR SYNCING ALL RECORDS) */}
+      {showWarningModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(5, 8, 16, 0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: '1.5rem'
+        }}>
+          <div className="glass-panel" style={{
+            maxWidth: '500px',
+            width: '100%',
+            padding: '2rem',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), 0 0 30px rgba(239, 68, 68, 0.15)',
+            position: 'relative',
+            borderRadius: '24px'
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              gap: '1.25rem'
+            }}>
+              {/* Warning Icon */}
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: '#ef4444',
+                padding: '1rem',
+                borderRadius: '50%',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                width: '60px',
+                height: '60px'
+              }}>
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <h3 style={{
+                  fontFamily: 'Outfit, sans-serif',
+                  fontSize: '1.5rem',
+                  fontWeight: 700,
+                  color: '#f87171'
+                }}>
+                  Confirmação de Carga Pesada ⚠️
+                </h3>
+                <p style={{
+                  color: 'var(--text-muted)',
+                  fontSize: '0.95rem',
+                  lineHeight: '1.6',
+                  fontWeight: 500
+                }}>
+                  Você escolheu sincronizar <span style={{ color: 'white', fontWeight: 700 }}>Todos os Registros (Base Completa)</span> da rede pública OpenDataSUS.
+                </p>
+              </div>
+
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.25)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: '12px',
+                padding: '1rem',
+                fontSize: '0.85rem',
+                color: '#fca5a5',
+                textAlign: 'left',
+                lineHeight: '1.5',
+                fontWeight: 500
+              }}>
+                ℹ️ Esta ação fará com que o servidor Spring Boot execute centenas de requisições de forma contínua para obter **toda a base de estrangeiros** do Ministério da Saúde. Isso pode demorar **vários minutos** dependendo da velocidade e limites da API pública.
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                width: '100%',
+                marginTop: '0.5rem'
+              }}>
+                <button
+                  onClick={() => setShowWarningModal(false)}
+                  style={{
+                    flex: 1,
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid var(--glass-border)',
+                    color: 'white',
+                    padding: '0.85rem',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowWarningModal(false);
+                    handleImport(50000); // 50,000 max limit to fetch full base of foreigners in SP
+                  }}
+                  style={{
+                    flex: 1,
+                    background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                    border: 'none',
+                    color: 'white',
+                    padding: '0.85rem',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    boxShadow: '0 0 15px rgba(239, 68, 68, 0.4)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+                  onMouseOut={(e) => e.currentTarget.style.filter = 'brightness(1.0)'}
+                >
+                  Confirmar Busca
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
