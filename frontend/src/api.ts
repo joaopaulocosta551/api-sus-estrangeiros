@@ -71,3 +71,14 @@ export const fetchImportStatus = async (): Promise<{ isImporting: boolean }> => 
     if (!response.ok) throw new Error('Failed to fetch import status');
     return response.json();
 };
+
+export const cancelImportAttendances = async (): Promise<{ status: string; message: string }> => {
+    const response = await fetch(`${API_URL}/attendances/import/cancel`, {
+        method: 'POST',
+        headers: {
+            'Authorization': authHeader
+        }
+    });
+    if (!response.ok) throw new Error('Failed to cancel import');
+    return response.json();
+};

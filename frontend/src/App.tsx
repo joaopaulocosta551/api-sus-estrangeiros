@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchAttendances, fetchDashboardStats, importAttendances, fetchImportStatus } from './api';
+import { fetchAttendances, fetchDashboardStats, importAttendances, fetchImportStatus, cancelImportAttendances } from './api';
 import type { DashboardStats } from './api';
 import './index.css';
 
@@ -57,6 +57,7 @@ function App() {
   const [tableLoading, setTableLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false); // Non-blocking background sync status
+  const [cancelling, setCancelling] = useState(false); // Synchronization cancellation state
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'table'>('dashboard');
   const [importCount, setImportCount] = useState<number | 'all_records'>(500); // Default to 500
@@ -159,6 +160,18 @@ function App() {
     }
   };
 
+  const handleCancelSync = async () => {
+    setCancelling(true);
+    try {
+      await cancelImportAttendances();
+      setIsSyncing(false); // Instantly trigger UI off-state
+    } catch (err) {
+      setError('Falha ao solicitar o cancelamento da sincronização.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   // --- STATS CALCULATIONS ---
   const totalAttendances = stats?.total || 0;
   const globalTotalAttendances = stats?.globalTotal || 0; // Absolute total of database, unfiltered!
@@ -220,7 +233,7 @@ function App() {
             value={importCount}
             onChange={(e) => {
               const val = e.target.value;
-              setImportCount(val === 'all_records' ? 'all_records' : Number(val));
+              setImportCount(val === 'all_records' ? 'all_records' : parseInt(val, 10));
             }}
             disabled={importing || isSyncing}
             style={{
@@ -292,7 +305,9 @@ function App() {
           fontWeight: 600,
           fontSize: '0.95rem',
           transition: 'all 0.5s ease',
-          boxShadow: '0 0 15px rgba(59, 130, 246, 0.1)'
+          boxShadow: '0 0 15px rgba(59, 130, 246, 0.1)',
+          flexWrap: 'wrap',
+          gap: '1rem'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div className="spinner" style={{ 
@@ -305,16 +320,38 @@ function App() {
             }}></div>
             <span>Sincronização Ativa: Os dados do SUS estão sendo importados em segundo plano. Os gráficos e contadores estão atualizando ao vivo!</span>
           </div>
-          <span className="badge" style={{ 
-            background: '#3b82f6', 
-            color: 'white', 
-            border: 'none', 
-            padding: '0.25rem 0.6rem', 
-            borderRadius: '6px', 
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            boxShadow: '0 0 8px rgba(59, 130, 246, 0.6)'
-          }}>AO VIVO</span>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              onClick={handleCancelSync}
+              disabled={cancelling}
+              style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#fca5a5',
+                padding: '0.4rem 0.8rem',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+            >
+              {cancelling ? 'Parando...' : 'Parar Sincronização'}
+            </button>
+            <span className="badge" style={{ 
+              background: '#3b82f6', 
+              color: 'white', 
+              border: 'none', 
+              padding: '0.25rem 0.6rem', 
+              borderRadius: '6px', 
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              boxShadow: '0 0 8px rgba(59, 130, 246, 0.6)'
+            }}>AO VIVO</span>
+          </div>
         </div>
       )}
 

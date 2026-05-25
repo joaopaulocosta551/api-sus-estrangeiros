@@ -36,4 +36,13 @@ class AttendanceImportController(private val importService: AttendanceImportServ
             "isImporting" to importService.isImporting.get()
         ))
     }
+
+    @PostMapping("/cancel")
+    fun cancelImport(): ResponseEntity<Map<String, String>> {
+        importService.cancel()
+        return ResponseEntity.ok(mapOf(
+            "status" to "success",
+            "message" to "Cancelamento da sincronização solicitado."
+        ))
+    }
 }

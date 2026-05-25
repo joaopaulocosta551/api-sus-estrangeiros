@@ -17,12 +17,21 @@ class AttendanceImportService(
     private val BATCH_SIZE = 100
 
     val isImporting = AtomicBoolean(false)
+    val shouldCancel = AtomicBoolean(false)
+
+    fun cancel() {
+        if (isImporting.get()) {
+            logger.info("Cancellation requested for background import.")
+            shouldCancel.set(true)
+        }
+    }
 
     fun importData(maxRecords: Int = 1000) {
         if (isImporting.getAndSet(true)) {
             logger.warn("Import is already in progress. Skipping.")
             return
         }
+        shouldCancel.set(false)
         try {
             var totalImported = 0
             
@@ -34,6 +43,10 @@ class AttendanceImportService(
             
             outerLoop@ for (year in years) {
                 for (month in months) {
+                    if (shouldCancel.get()) {
+                        logger.info("Import cancelled by user request.")
+                        break@outerLoop
+                    }
                     if (totalImported >= maxRecords) {
                         logger.info("Reached maximum record target limit ($maxRecords). Stopping.")
                         break@outerLoop
@@ -55,6 +68,9 @@ class AttendanceImportService(
                     var monthImported = 0
                     
                     while (totalImported < maxRecords) {
+                        if (shouldCancel.get()) {
+                            break
+                        }
                         // Max result window protection per monthly query (highly safe!)
                         if (currentFrom + BATCH_SIZE > 10000) {
                             logger.info("Reached the maximum result window limit (10,000) for period $month/$year. Skipping to next period.")
