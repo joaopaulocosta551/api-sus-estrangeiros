@@ -37,14 +37,14 @@ class OpenDataSusClient {
         }
     }
 
-    suspend fun fetchEstrangeiros(from: Int, size: Int): OpenSearchResponse {
+    suspend fun fetchEstrangeiros(from: Int, size: Int, query: String): OpenSearchResponse {
         val response = client.post("https://notifica-prd-es.saude.gov.br/desc-esus-notifica-estado-sp/_search") {
             contentType(ContentType.Application.Json)
             setBody(
                 OpenSearchRequest(
                     from = from,
                     size = size,
-                    query = OpenSearchQuery(QueryString("estrangeiro: \"Sim\""))
+                    query = OpenSearchQuery(QueryString(query))
                 )
             )
         }
