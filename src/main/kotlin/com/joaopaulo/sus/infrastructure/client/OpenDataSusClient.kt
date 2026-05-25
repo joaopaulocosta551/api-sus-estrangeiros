@@ -21,6 +21,7 @@ class OpenDataSusClient {
             json(Json {
                 ignoreUnknownKeys = true
                 coerceInputValues = true
+                encodeDefaults = true
             })
         }
         install(Auth) {

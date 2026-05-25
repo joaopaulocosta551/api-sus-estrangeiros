@@ -73,6 +73,7 @@ class AttendanceService(private val repository: AttendanceRepository) {
 
     private fun SusAttendance.toResponse() = AttendanceResponse(
         id = this.id,
+        externalId = this.externalId,
         year = this.year,
         month = this.month,
         country = this.country,
