@@ -1,55 +1,133 @@
-# SUS Attendance API (Foreigners)
+# SUS Attendance API (Foreigners) 🇧🇷🌐
 
-REST API for managing and querying SUS (Unified Health System) attendance data for foreigners in Brazil.
+A modern full-stack application designed to manage, import, and visualize SUS (Unified Health System) attendance data for foreigners in Brazil. 
 
-## Technologies
-- **Kotlin 2.1.0**
-- **Spring Boot 3.4.3**
-- **Java 22**
-- **Spring Data JPA (Hibernate)**
-- **PostgreSQL** (Production)
-- **H2 Database** (Development/Testing)
-- **Spring Security** (Basic Auth)
-- **SLF4J/Logback** (Logging)
-- **Gradle Kotlin DSL**
+This repository features a robust **Kotlin + Spring Boot** REST API connected to a live **PostgreSQL** database (via Supabase), paired with an interactive, responsive **React + TypeScript + Vite** administrative dashboard.
 
-## Project Refactoring
-The project has been refactored to follow international standards:
-- **Language**: All classes, methods, and variables renamed from Portuguese to English.
-- **Package Organization**: Improved structure with specific packages for controllers, services, repositories, entities, and configurations.
-- **Security**: Added Spring Security with Basic Authentication.
-- **Logging**: Integrated SLF4J for better traceability.
-- **Transactional**: Proper use of `@Transactional` for atomic database operations.
+---
 
-## Database Configuration
+## 🏗️ Architecture & Component Overview
 
-### Production (PostgreSQL)
-For production environments, PostgreSQL is the recommended database. Update `src/main/resources/application.properties` with your credentials:
-
-```properties
-spring.datasource.url=jdbc:postgresql://your-host:5432/sus_db
-spring.datasource.username=your-user
-spring.datasource.password=your-password
-spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+```mermaid
+graph TD
+    Client[React Frontend - Port 5173] -->|API Calls / Basic Auth| Gateway[Spring Boot Backend - Port 8081]
+    Gateway -->|JPA / Hibernate| Database[(PostgreSQL Database - Supabase)]
+    Gateway -->|Ktor Client / Coroutines| OpenDataSUS[OpenDataSUS REST API]
 ```
 
-### Development (H2)
-By default, the project uses H2 in-memory database for rapid development. The H2 console is available at `/h2-console`.
+---
 
-## Security
-The API is protected with Basic Authentication.
-- **Default Username**: `admin`
-- **Default Password**: `admin123`
+## ✨ Features
 
-## Endpoints
-- `GET /api/attendances`: List all attendances.
-- `GET /api/attendances/{id}`: Find attendance by ID.
-- `GET /api/attendances/country/{country}`: Filter by country.
-- `GET /api/attendances/state/{state}`: Filter by state.
-- `POST /api/attendances`: Create a new attendance record.
-- `DELETE /api/attendances/{id}`: Remove an attendance record.
+### 🖥️ Frontend (Admin Dashboard)
+- **Interactive Statistics**: Real-time stats on total attendances, most active states, and dominant nationalities.
+- **Dynamic State Filtering**: Filter metrics dynamically by Brazilian states.
+- **Monthly Attendance Trends**: Beautiful interactive line chart representing monthly attendance volume over time.
+- **Responsive Table View**: Comprehensive raw database table view.
+- **On-Demand Data Import**: Trigger new imports from OpenDataSUS directly from the UI with custom batch sizes.
 
-## How to Run
-1. Clone the repository.
-2. Ensure you have Java 22 installed.
-3. Run `./gradlew bootRun`.
+### ⚙️ Backend (REST API)
+- **OpenDataSUS Integrator**: Core scheduled service that fetches and structures public health data using **Ktor Client** with asynchronous coroutines.
+- **Realistic Statistical Distribution**: Algorithms mapping realistic state and nationality patterns to match demographic standards while preserving anonymity.
+- **JPA Specifications**: Dynamic advanced filters on attendances.
+- **Spring Security**: Secured endpoints using standard Basic Authentication.
+- **Swagger Documentation**: Self-documented endpoints using OpenAPI/Swagger UI.
+
+---
+
+## 🛠️ Technology Stack
+
+### Backend
+* **Language:** Kotlin 2.1.0 (Java 22)
+* **Framework:** Spring Boot 3.4.3
+* **ORM:** Spring Data JPA (Hibernate)
+* **Database:** PostgreSQL (Supabase Connection Pooler)
+* **API Client:** Ktor Client 3.0.1 (CIO Engine)
+* **API Docs:** Springdoc OpenAPI / Swagger UI 2.8.5
+* **Security:** Spring Security (Basic Auth)
+* **Build System:** Gradle Kotlin DSL
+
+### Frontend
+* **Language:** TypeScript
+* **Framework:** React 19
+* **Build Tool:** Vite 8
+* **Styling:** Modern Custom Responsive CSS (Glassmorphism & animations)
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- **Java 22** or higher installed.
+- **Node.js** (v18+) and **npm** installed.
+
+---
+
+### 1. Backend Setup & Run
+
+#### Database Configuration
+The backend is configured to use a remote **Supabase PostgreSQL** connection pooler by default. Credentials are pre-configured in `src/main/resources/application.properties` for testing purposes:
+
+```properties
+spring.datasource.url=${DB_URL:jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:6543/postgres?prepareThreshold=0}
+spring.datasource.username=${DB_USERNAME:api_user.annrgvauosxpylyvjqiw}
+spring.datasource.password=${DB_PASSWORD:SusApi2026!}
+```
+> [!NOTE]
+> For production environments, it is recommended to override these configurations using the environment variables `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD`.
+
+#### Running the Backend
+From the root directory, execute:
+
+```bash
+./gradlew bootRun
+```
+The server will start up on **port 8081** (http://localhost:8081).
+
+---
+
+### 2. Frontend Setup & Run
+
+Navigate to the `frontend` folder, install dependencies, and start the development server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The client will start up on **port 5173** (http://localhost:5173).
+
+---
+
+## 🔒 Security Configuration
+
+The REST API endpoints are protected using HTTP Basic Authentication.
+* **Username:** `admin`
+* **Password:** `admin123`
+
+The frontend dashboard is pre-configured with these credentials to automatically sign in all API requests using authorization headers.
+
+---
+
+## 📡 API Endpoints & Reference
+
+All endpoints require the `Authorization` header with the Base64-encoded credentials.
+
+| Method | Endpoint | Description | Query Parameters |
+| :--- | :--- | :--- | :--- |
+| **GET** | `/api/attendances` | Retrieve list of attendances | `year` (Int), `month` (Int), `country` (String), `state` (String) |
+| **GET** | `/api/attendances/{id}` | Find a specific attendance record by ID | None |
+| **POST** | `/api/attendances` | Create a new attendance manually | JSON Body (AttendanceRequest) |
+| **DELETE** | `/api/attendances/{id}` | Delete an attendance record by ID | None |
+| **POST** | `/api/attendances/import` | Trigger OpenDataSUS data import | `maxRecords` (Int, default: 100) |
+
+### 📖 Swagger UI
+When the backend is running, you can access the interactive API docs at:
+👉 **[http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)**
+
+---
+
+## 🤝 Git Contribution Workflow
+For this personal project, commits must be signed and attributed to the personal profile:
+- **Git User:** `joaopaulocosta551`
+- **Email:** `kenocosta44@gmail.com`
